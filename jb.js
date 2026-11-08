@@ -219,11 +219,17 @@ if (ramBox) {
 /* Not when the page is on its way home: log mode hides #msg, which is
    where that notice sits. */
 if (SHOW_LOG && !SENT_HOME && document.body) document.body.className = "log";
+
 /* `ran` says whether the kernel stage was entered. A failure before that
    costs nothing and a reload is enough; a failure after it may leave the
-   handles armed, and then only a cold start is safe. */
+   handles armed, and then only a cold start is safe.
+
+   Only when both are true -- the real kernel stage ran AND it returned
+   success -- is body.complete set, which reveals the store/XeMo page in
+   jb.html. Diagnostics (stop=primitive, afterglow=probe) and failures keep
+   their original body class and never show that page. */
 function finishUI(ok, ran) {
-  if (SHOW_LOG || !document.body) return;
+  if (!document.body) return;
   const m = document.getElementById("msg");
   if (m)
     m.textContent = ok
@@ -231,6 +237,16 @@ function finishUI(ok, ran) {
       : ran
         ? "Restart your console"
         : "Refresh the page and run again";
+
+  /* Full successful run: show the success page, overriding log mode too.
+     Placed before the SHOW_LOG guard so it wins even under ?log=1. */
+  if (ok && ran) {
+    document.body.className = "complete";
+    return;
+  }
+
+  /* Original behaviour for everything else. */
+  if (SHOW_LOG) return;
   document.body.className = ok ? "done" : "fail";
 }
 function mark(tag, detail) {
@@ -481,6 +497,9 @@ let mainMf = null,
         primitiveOk ? "PASS" : "FAIL",
       );
 
+      /* Diagnostic path: never show the success page. The second argument
+         (ran) stays undefined, so finishUI skips the .complete branch even
+         when primitiveOk is true. */
       finishUI(primitiveOk);
       return;
     }
@@ -912,6 +931,9 @@ let mainMf = null,
       } catch (agError) {
         mark("AG-FAIL", agError && agError.message ? agError.message : String(agError));
       }
+      /* agRan is true only for the real kernel run (never for a probe), and
+         agOk reflects the chain's own verdict. finishUI shows the store /
+         XeMo page only when both are true. */
       finishUI(agOk, agRan);
       // Swap the address out. The browser restores the last one after a
       // reload, and an enabler that restarts SceShellUI causes exactly that
