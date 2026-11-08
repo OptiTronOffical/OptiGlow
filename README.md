@@ -1,4 +1,4 @@
-# afterglow (web)
+# OptiGlow (Beta)
 
 Kernel exploit for the PlayStation 4 on firmware **12.00, 12.02, 12.50, 12.52,
 13.00, 13.02, 13.04, 13.50, 13.52 and 14.00**, run from the console's own
@@ -12,52 +12,12 @@ afterglow is not Lapse.
 
 * PS4 on firmware 12.00, 12.02, 12.50, 12.52, 13.00, 13.02, 13.04, 13.50,
   13.52 or 14.00, on your network
-* A machine on the same network with `python3`
 
 Nothing is installed on the console. The pages are static files.
 
 ## Running it
 
-```sh
-./serve.sh                      # port 8000, or AFTERGLOW_PORT=8080 ./serve.sh
-```
-
-Open `http://<host>:8000/` in the console's browser, pick **ps4-hen** or
-**GoldHEN**, press start. Tick *autostart* and it goes by itself after five
-seconds.
-
-Each run has to begin on that page. The run page arms the chain only when it
-was reached from there, so a browser restoring its last session cannot set it
-off again with nobody watching.
-
-## What is shipped
-
-| File | What it is |
-|---|---|
-| `hen.bin` | ps4-hen `pre-release-main-182`, **already patched** (see below) |
-| `goldhen.bin` | GoldHEN, included with the author's permission |
-| `patchset-1200.bin` … `patchset-1400.bin` | the kernel patches GoldHEN expects to find, one set per firmware |
-| `afterglow.js` | this work |
-| `jb.js`, `ps4_offsets.js` | the raw13g host, trimmed |
-| `core.js`, `mem.js`, `int64.js` | the in-process primitive, by way of that host |
-| `index.html`, `jb.html`, `launch.js`, `style.css`, `meme.png` | the landing page and the run page |
-| `serve.sh` | the local server, with the headers this needs |
-| `cache.appcache`, `make-manifest.sh` | the offline cache and the script that rebuilds it |
-
-### ps4-hen is patched here
-
-Upstream `hen.bin` has a wrong address for `sceSblPfsSetKeys` on 14.00.
-Unpatched, **every app launch freezes the console** and the kernel stays broken
-until you reboot. The copy in this folder already carries the fix:
-
-```sh
-md5sum hen.bin                  # 6417a84a72f9c7988f0e33b3ae190542  (patched)
-                                # 9aff7544eddef2f8202f72fc633d2be3  = upstream, do not use
-```
-
-If you bring your own build, change `kpayload/source/offsets/1400.c`,
-`sceSblPfsSetKeys_addr` from `0x006272B0` to `0x00627270`. Why, and how it was
-established: `TECHNICAL.md`.
+On your ps4 browser, open: https://optiglow-beta.vercel.app/
 
 ## If it stops
 
@@ -70,24 +30,6 @@ times; a failure in the WebKit stage costs nothing, so going again is cheap.
 were confirmed by testers on 06.11.2026, and 12.00, 12.02, 12.50 and 12.52
 on 07.11.2026.
 
-The page tells you which of these happened.
-
-| What it says | What it cost | What to do |
-|---|---|---|
-| `exploit failed - please retry (reopen browser)` | nothing — no apm unit spent, no kernel byte written | reopen the browser and go again |
-| nothing at all, for 45 s | same | the watchdog says the same thing; if even that does not appear, the WebProcess is gone — cold start |
-| `the handles are NOT defused` | the chain got far and could not clean up | **do not close the browser** — cold start |
-
-That last one matters. With the handles left armed, the next process exit runs
-`fo_close` into `apmclose` and never completes — and closing the browser *is*
-that exit, so no browser restart will help afterwards.
-
-There is also a failure that cannot be caught. The reclaimed object supplies
-the stack pointer, and the kernel reads it before a single instruction of ours
-runs. When some other kernel allocation wins the hole instead, ring 0 carries
-on with a stack pointer out of a stranger's object and the console dies right
-there — no message, no clean shutdown. Don't run this with anything unsaved on
-the console.
 
 ## Reviews wanted
 
